@@ -41,15 +41,27 @@
 #define BITHockeyFeedbackMessagesLoadingFinished @"BITHockeyFeedbackMessagesLoadingFinished"
 
 
-typedef enum {
-  BITFeedbackUserDataElementDontShow = 0, // don't ask for this user data element at all
-  BITFeedbackUserDataElementOptional = 1, // the user may provide it, but does not have to
-  BITFeedbackUserDataElementRequired = 2 // the user has to provide this to continue
-} BITFeedbackUserDataElement;
+/**
+ *  Defines if behavior of the user data field
+ */
+typedef NS_ENUM(NSInteger, BITFeedbackUserDataElement) {
+  /**
+   *  don't ask for this user data element at all
+   */
+  BITFeedbackUserDataElementDontShow = 0,
+  /**
+   *  the user may provide it, but does not have to
+   */
+  BITFeedbackUserDataElementOptional = 1,
+  /**
+   *  the user has to provide this to continue
+   */
+  BITFeedbackUserDataElementRequired = 2
+};
 
 
 @class BITFeedbackMessage;
-
+@class BITFeedbackManagerDelegate;
 
 /**
  The feedback module.
@@ -94,7 +106,19 @@ typedef enum {
  feedback message.
  */
 
-@interface BITFeedbackManager : BITHockeyBaseManager <UIAlertViewDelegate>
+@interface BITFeedbackManager : BITHockeyBaseManager
+
+///-----------------------------------------------------------------------------
+/// @name Delegate
+///-----------------------------------------------------------------------------
+
+/**
+ Sets the `BITFeedbackManagerDelegate` delegate.
+
+ Can be set to be notified when new feedback is received from the server.
+ */
+@property (nonatomic, weak) id<BITFeedbackManagerDelegate> delegate;
+
 
 ///-----------------------------------------------------------------------------
 /// @name General settings
@@ -114,6 +138,7 @@ typedef enum {
  `[BITHockeyManagerDelegate userNameForHockeyManager:componentManager:]` then this
  property will automatically be set to `BITFeedbackUserDataElementDontShow`
 
+ @see BITFeedbackUserDataElement
  @see requireUserEmail
  @see `[BITHockeyManagerDelegate userNameForHockeyManager:componentManager:]`
  */
@@ -136,6 +161,7 @@ typedef enum {
  `[BITHockeyManagerDelegate userEmailForHockeyManager:componentManager:]` then this
  property will automatically be set to `BITFeedbackUserDataElementDontShow`
  
+ @see BITFeedbackUserDataElement
  @see requireUserName
  @see `[BITHockeyManagerDelegate userEmailForHockeyManager:componentManager:]`
  */
@@ -183,7 +209,7 @@ typedef enum {
  @see requireUserName
  @see requireUserEmail
  @see showFeedbackComposeView
- @see feedbackComposeViewController:
+ @see feedbackComposeViewController
  @see showFeedbackListView
  @see feedbackListViewController:
  */

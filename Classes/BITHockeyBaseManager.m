@@ -1,10 +1,30 @@
-//
-//  CNSHockeyBaseManager.m
-//  HockeySDK
-//
-//  Created by Andreas Linde on 04.06.12.
-//  Copyright (c) 2012 __MyCompanyName__. All rights reserved.
-//
+/*
+ * Author: Andreas Linde <mail@andreaslinde.de>
+ *
+ * Copyright (c) 2012-2013 HockeyApp, Bit Stadium GmbH.
+ * All rights reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 #import "HockeySDK.h"
 #import "HockeySDKPrivate.h"
@@ -23,6 +43,10 @@
 #import <mach-o/ldsyms.h>
 #endif
 
+#ifndef __IPHONE_6_1
+#define __IPHONE_6_1     60100
+#endif
+
 @implementation BITHockeyBaseManager {
   UINavigationController *_navController;
   
@@ -34,13 +58,14 @@
 
 - (id)init {
   if ((self = [super init])) {
-    _isAppStoreEnvironment = NO;
-    _appIdentifier = nil;
     _serverURL = BITHOCKEYSDK_URL;
 
-    _navController = nil;
-    _barStyle = UIBarStyleBlackOpaque;
-    self.tintColor = BIT_RGBCOLOR(25, 25, 25);
+    if ([self isPreiOS7Environment]) {
+      _barStyle = UIBarStyleBlackOpaque;
+      self.navigationBarTintColor = BIT_RGBCOLOR(25, 25, 25);
+    } else {
+      _barStyle = UIBarStyleDefault;
+    }
     _modalPresentationStyle = UIModalPresentationFormSheet;
     
     NSLocale *enUSPOSIXLocale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
@@ -72,7 +97,29 @@
 }
 
 - (NSString *)encodedAppIdentifier {
-  return (_appIdentifier ? bit_URLEncodedString(_appIdentifier) : bit_URLEncodedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleIdentifier"]));
+  return (_appIdentifier ? bit_URLEncodedString(_appIdentifier) : bit_URLEncodedString([self mainBundleIdentifier]));
+}
+
+- (BOOL)isPreiOS7Environment {
+  static BOOL isPreiOS7Environment = YES;
+  static dispatch_once_t checkOS;
+  
+  dispatch_once(&checkOS, ^{
+    // we only perform this runtime check if this is build against at least iOS7 base SDK
+#if __IPHONE_OS_VERSION_MAX_ALLOWED > __IPHONE_6_1
+    // runtime check according to
+    // https://developer.apple.com/library/prerelease/ios/documentation/UserExperience/Conceptual/TransitionGuide/SupportingEarlieriOS.html
+    if (floor(NSFoundationVersionNumber) <= NSFoundationVersionNumber_iOS_6_1) {
+      isPreiOS7Environment = YES;
+    } else {
+      isPreiOS7Environment = NO;
+    }
+#else
+    isPreiOS7Environment = YES;
+#endif
+  });
+  
+  return isPreiOS7Environment;
 }
 
 - (NSString *)getDevicePlatform {
@@ -135,6 +182,24 @@
   return visibleWindow;
 }
 
+/**
+ * Provide a custom UINavigationController with customized appearance settings
+ *
+ * @param viewController The root viewController
+ * @param modalPresentationStyle The modal presentation style
+ *
+ * @return A UINavigationController
+ */
+- (UINavigationController *)customNavigationControllerWithRootViewController:(UIViewController *)viewController presentationStyle:(UIModalPresentationStyle)modalPresentationStyle {
+  UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:viewController];
+  navController.navigationBar.barStyle = self.barStyle;
+  if (self.navigationBarTintColor)
+    navController.navigationBar.tintColor = self.navigationBarTintColor;
+  navController.modalPresentationStyle = self.modalPresentationStyle;
+  
+  return navController;
+}
+
 - (void)showView:(UIViewController *)viewController {
   UIViewController *parentViewController = nil;
   
@@ -149,8 +214,8 @@
   }
   
   // use topmost modal view
-  while (parentViewController.modalViewController) {
-    parentViewController = parentViewController.modalViewController;
+  while (parentViewController.presentedViewController) {
+    parentViewController = parentViewController.presentedViewController;
   }
   
   // special addition to get rootViewController from three20 which has it's own controller handling
@@ -166,10 +231,7 @@
   
   if (_navController != nil) _navController = nil;
   
-  _navController = [[UINavigationController alloc] initWithRootViewController:viewController];
-  _navController.navigationBar.barStyle = _barStyle;
-  _navController.navigationBar.tintColor = _tintColor;
-  _navController.modalPresentationStyle = _modalPresentationStyle;
+  _navController = [self customNavigationControllerWithRootViewController:viewController presentationStyle:_modalPresentationStyle];
   
   if (parentViewController) {
     _navController.modalTransitionStyle = UIModalTransitionStyleCoverVertical;
@@ -197,7 +259,7 @@
 	if (!key || !stringValue)
 		return NO;
   
-  NSString *serviceName = [NSString stringWithFormat:@"%@.HockeySDK", [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleIdentifier"]];
+  NSString *serviceName = [NSString stringWithFormat:@"%@.HockeySDK", [self mainBundleIdentifier]];
   
   NSError *error = nil;
   return [BITKeychainUtils storeUsername:key andPassword:stringValue forServiceName:serviceName updateExisting:YES error:&error];
@@ -207,42 +269,27 @@
 	if (!key)
 		return nil;
   
-  NSString *serviceName = [NSString stringWithFormat:@"%@.HockeySDK", [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleIdentifier"]];
+  NSString *serviceName = [NSString stringWithFormat:@"%@.HockeySDK", [self mainBundleIdentifier]];
 
   NSError *error = nil;
   return [BITKeychainUtils getPasswordForUsername:key andServiceName:serviceName error:&error];
 }
 
 - (BOOL)removeKeyFromKeychain:(NSString *)key {
-  NSString *serviceName = [NSString stringWithFormat:@"%@.HockeySDK", [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleIdentifier"]];
+  NSString *serviceName = [NSString stringWithFormat:@"%@.HockeySDK", [self mainBundleIdentifier]];
 
   NSError *error = nil;
   return [BITKeychainUtils deleteItemForUsername:key andServiceName:serviceName error:&error];
 }
 
+- (NSString*) mainBundleIdentifier {
+  return [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleIdentifier"];
+}
 
 #pragma mark - Manager Control
 
 - (void)startManager {
 }
-
-
-#pragma mark - Networking
-
-- (NSData *)appendPostValue:(NSString *)value forKey:(NSString *)key {
-  NSString *boundary = @"----FOO";
-  
-  NSMutableData *postBody = [NSMutableData data];
-  
-  [postBody appendData:[[NSString stringWithFormat:@"--%@\r\n", boundary] dataUsingEncoding:NSUTF8StringEncoding]];
-  [postBody appendData:[[NSString stringWithFormat:@"Content-Disposition: form-data; name=\"%@\";\r\n", key] dataUsingEncoding:NSUTF8StringEncoding]];
-  [postBody appendData:[[NSString stringWithFormat:@"Content-Type: text\r\n\r\n"] dataUsingEncoding:NSUTF8StringEncoding]];
-  [postBody appendData:[value dataUsingEncoding:NSUTF8StringEncoding]];    
-  [postBody appendData:[@"\r\n" dataUsingEncoding:NSUTF8StringEncoding]];
-  
-  return postBody;
-}
-
 
 #pragma mark - Helpers
 
