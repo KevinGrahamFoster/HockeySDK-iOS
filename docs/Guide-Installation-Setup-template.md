@@ -1,6 +1,6 @@
-## Version 3.0.0
+## Version 3.5.0b3
 
-- [Changelog](http://www.hockeyapp.net/help/sdk/ios/3.0.0/docs/docs/Changelog.html)
+- [Changelog](http://www.hockeyapp.net/help/sdk/ios/3.5.0b3/docs/docs/Changelog.html)
 
 ## Introduction
 
@@ -12,7 +12,6 @@ This document contains the following sections:
 - [Download & Extract](#download)
 - [Set up Xcode](#xcode)
 - [Modify Code](#modify)
-- [Submit the UDID](#udid)
 - [Mac Desktop Uploader](#mac)
 - [Xcode Documentation](#documentation)
 
@@ -20,10 +19,6 @@ This document contains the following sections:
 ## Requirements
 
 The SDK runs on devices with iOS 5.0 or higher.
-
-If you need support for iOS 4.x, please check out [HockeySDK v2.5.5](http://www.hockeyapp.net/releases/)
-
-If you need support for iOS 3.x, please check out [HockeyKit](http://support.hockeyapp.net/kb/client-integration/beta-distribution-on-ios-hockeykit) and [QuincyKit](http://support.hockeyapp.net/kb/client-integration/crash-reporting-on-ios-quincykit)
 
 <a id="download"></a> 
 ## Download & Extract
@@ -86,9 +81,9 @@ If you need support for iOS 3.x, please check out [HockeyKit](http://support.hoc
 
         #import <HockeySDK/HockeySDK.h>
 
-3. Let the AppDelegate implement the protocols `BITHockeyManagerDelegate`, `BITUpdateManagerDelegate` and `BITCrashManagerDelegate`:
+3. Let the AppDelegate implement the protocols `BITHockeyManagerDelegate`:
 
-        @interface AppDelegate(HockeyProtocols) <BITHockeyManagerDelegate, BITUpdateManagerDelegate, BITCrashManagerDelegate> {}
+        @interface AppDelegate(HockeyProtocols) <BITHockeyManagerDelegate> {}
         @end
 
 4. Search for the method `application:didFinishLaunchingWithOptions:`
@@ -107,22 +102,6 @@ If you need support for iOS 3.x, please check out [HockeyKit](http://support.hoc
 *Note:* The SDK is optimized to defer everything possible to a later time while making sure e.g. crashes on startup can also be caught and each module executes other code with a delay some seconds. This ensures that applicationDidFinishLaunching will process as fast as possible and the SDK will not block the startup sequence resulting in a possible kill by the watchdog process.
 
 
-<a id="udid"></a> 
-## Submit the UDID
-
-If you only want crash reporting, you can skip this step. If you want to use HockeyApp for beta distribution and analyze which testers have installed your app, you need to implement an additional delegate method in your AppDelegate.m:
-
-    #pragma mark - BITUpdateManagerDelegate
-    - (NSString *)customDeviceIdentifierForUpdateManager:(BITUpdateManager *)updateManager {
-    #ifndef CONFIGURATION_AppStore
-      if ([[UIDevice currentDevice] respondsToSelector:@selector(uniqueIdentifier)])
-        return [[UIDevice currentDevice] performSelector:@selector(uniqueIdentifier)];
-    #endif
-      return nil;
-    }
-  
-The method only returns the UDID when the build is not targeted to the App Sore. This assumes that a preprocessor macro name CONFIGURATION_AppStore exists and is set for App Store builds. The macros are already defined in `HockeySDK.xcconfig` or can be set manually by setting `GCC_PREPROCESSOR_DEFINITIONS` in your build configurations to `CONFIGURATION_$(CONFIGURATION)`.
-
 <a id="mac"></a> 
 ## Mac Desktop Uploader
 
@@ -133,6 +112,6 @@ The Mac Desktop Uploader can provide easy uploading of your app versions to Hock
 
 This documentation provides integrated help in Xcode for all public APIs and a set of additional tutorials and HowTos.
 
-1. Copy `de.bitstadium.HockeySDK-iOS-3.0.0.docset` into ~`/Library/Developer/Shared/Documentation/DocSet`
+1. Copy `de.bitstadium.HockeySDK-iOS-3.5.0.docset` into ~`/Library/Developer/Shared/Documentation/DocSet`
 
-The documentation is also available via the following URL: [http://hockeyapp.net/help/sdk/ios/3.0.0/](http://hockeyapp.net/help/sdk/ios/3.0.0/)
+The documentation is also available via the following URL: [http://hockeyapp.net/help/sdk/ios/3.5.0b3/](http://hockeyapp.net/help/sdk/ios/3.5.0b3/)

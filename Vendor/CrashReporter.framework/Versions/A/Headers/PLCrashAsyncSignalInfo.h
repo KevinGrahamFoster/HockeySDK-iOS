@@ -1,9 +1,7 @@
 /*
- * Author: Andreas Linde <mail@andreaslinde.de>
- *         Kent Sutherland
+ * Author: Landon Fuller <landonf@plausiblelabs.com>
  *
- * Copyright (c) 2012-2013 HockeyApp, Bit Stadium GmbH.
- * Copyright (c) 2011 Andreas Linde & Kent Sutherland.
+ * Copyright (c) 2008-2009 Plausible Labs Cooperative, Inc.
  * All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
@@ -28,17 +26,33 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#import <Foundation/Foundation.h>
+#ifndef PLCRASH_ASYNC_SIGNAL_INFO_H
+#define PLCRASH_ASYNC_SIGNAL_INFO_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-@interface BITCrashManager () {
+/**
+ * @internal
+ *
+ * @defgroup plcrash_async_signal_info Signal Information
+ * @ingroup plcrash_async
+ *
+ * Provides mapping of signal number and code to strings.
+ *
+ * @{
+ */
+
+const char *plcrash_async_signal_signame (int signal);
+const char *plcrash_async_signal_sigcode (int signal, int si_code);
+
+/**
+ * @} plcrash_async_signal_info
+ */
+
+#ifdef __cplusplus
 }
+#endif
 
-//// set the server URL
-//@property (nonatomic, retain) NSString *serverURL;
-//
-//- (id)initWithAppIdentifier:(NSString *)appIdentifier;
-//
-//- (void)startManager;
-
-@end
+#endif /* PLCRASH_ASYNC_SIGNAL_INFO_H */
