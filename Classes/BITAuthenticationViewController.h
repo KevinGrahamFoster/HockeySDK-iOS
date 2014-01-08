@@ -48,33 +48,30 @@
 @property (nonatomic, assign) BOOL showsLoginViaWebButton;
 
 /**
+ *  Description shown on top of view. Should tell why this view 
+ *  was presented and what's next.
+ */
+@property (nonatomic, copy) NSString* tableViewTitle;
+
+/**
  *	can be set to YES to also require the users password
  *
  *  defaults to NO
  */
 @property (nonatomic, assign) BOOL requirePassword;
 
-/** configure if user can skip authentication or not
- *
- *  defaults to YES
- */
-@property (nonatomic, assign) BOOL showsSkipButton;
-
 @property (nonatomic, weak) id<BITAuthenticationViewControllerDelegate> delegate;
 
+/**
+ *  allows to pre-fill the email-addy
+ */
+@property (nonatomic, copy) NSString* email;
 @end
 
 /**
  *  BITAuthenticationViewController protocol
  */
 @protocol BITAuthenticationViewControllerDelegate<NSObject>
-
-/**
- *	called then the user skipped the auth-dialgo
- *
- *	@param	viewController the delegating viewcontroller
- */
-- (void) authenticationViewControllerDidSkip:(UIViewController*) viewController;
 
 - (void) authenticationViewControllerDidTapWebButton:(UIViewController*) viewController;
 

@@ -52,6 +52,8 @@
 // get array of all available versions
 @property (nonatomic, copy) NSArray *appVersions;
 
+@property (nonatomic, strong) NSNumber *currentAppVersionUsageTime;
+
 @property (nonatomic, strong) NSURLConnection *urlConnection;
 
 @property (nonatomic, copy) NSDate *usageStartTimestamp;
@@ -64,7 +66,7 @@
 
 @property (nonatomic, strong) NSString *installationIdentificationType;
 
-@property (nonatomic) BOOL installationIdentificationValidated;
+@property (nonatomic) BOOL installationIdentified;
 
 // if YES, the API will return an existing JMC config
 // if NO, the API will return only version information

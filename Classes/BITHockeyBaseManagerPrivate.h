@@ -16,7 +16,7 @@
 
 @property (nonatomic, strong) NSString *appIdentifier;
 
-- (id)initWithAppIdentifier:(NSString *)appIdentifier isAppStoreEnvironemt:(BOOL)isAppStoreEnvironment;
+- (id)initWithAppIdentifier:(NSString *)appIdentifier isAppStoreEnvironment:(BOOL)isAppStoreEnvironment;
 
 - (void)startManager;
 
@@ -48,8 +48,8 @@
 - (NSString *)executableUUID;
 
 // UI helpers
-- (UINavigationController *)customNavigationControllerWithRootViewController:(UIViewController *)viewController presentationStyle:(UIModalPresentationStyle)presentationStyle;
 - (UIWindow *)findVisibleWindow;
+- (UINavigationController *)customNavigationControllerWithRootViewController:(UIViewController *)viewController presentationStyle:(UIModalPresentationStyle)presentationStyle;
 - (void)showView:(UIViewController *)viewController;
 
 // Date helpers
@@ -57,6 +57,7 @@
 
 // keychain helpers
 - (BOOL)addStringValueToKeychain:(NSString *)stringValue forKey:(NSString *)key;
+- (BOOL)addStringValueToKeychainForThisDeviceOnly:(NSString *)stringValue forKey:(NSString *)key;
 - (NSString *)stringValueFromKeychainForKey:(NSString *)key;
 - (BOOL)removeKeyFromKeychain:(NSString *)key;
 

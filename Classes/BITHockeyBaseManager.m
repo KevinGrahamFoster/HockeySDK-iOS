@@ -35,7 +35,6 @@
 #import "BITHockeyBaseManagerPrivate.h"
 #import "BITHockeyBaseViewController.h"
 
-#import "BITHockeyManagerPrivate.h"
 #import "BITKeychainUtils.h"
 
 #import <sys/sysctl.h>
@@ -77,7 +76,7 @@
   return self;
 }
 
-- (id)initWithAppIdentifier:(NSString *)appIdentifier isAppStoreEnvironemt:(BOOL)isAppStoreEnvironment {
+- (id)initWithAppIdentifier:(NSString *)appIdentifier isAppStoreEnvironment:(BOOL)isAppStoreEnvironment {
   if ((self = [self init])) {
     _appIdentifier = appIdentifier;
     _isAppStoreEnvironment = isAppStoreEnvironment;
@@ -97,7 +96,7 @@
 }
 
 - (NSString *)encodedAppIdentifier {
-  return (_appIdentifier ? bit_URLEncodedString(_appIdentifier) : bit_URLEncodedString([self mainBundleIdentifier]));
+  return bit_encodeAppIdentifier(_appIdentifier);
 }
 
 - (BOOL)isPreiOS7Environment {
@@ -162,7 +161,11 @@
 }
 
 - (UIWindow *)findVisibleWindow {
-  UIWindow *visibleWindow = nil;
+  UIWindow *visibleWindow = [UIApplication sharedApplication].keyWindow;
+  
+  if (!(visibleWindow.hidden)) {
+    return visibleWindow;
+  }
   
   // if the rootViewController property (available >= iOS 4.0) of the main window is set, we present the modal view controller on top of the rootViewController
   NSArray *windows = [[UIApplication sharedApplication] windows];
@@ -171,7 +174,7 @@
       visibleWindow = window;
     }
     if ([UIWindow instancesRespondToSelector:@selector(rootViewController)]) {
-      if ([window rootViewController]) {
+      if (!(window.hidden) && ([window rootViewController])) {
         visibleWindow = window;
         BITHockeyLog(@"INFO: UIWindow with rootViewController found: %@", visibleWindow);
         break;
@@ -218,6 +221,14 @@
     parentViewController = parentViewController.presentedViewController;
   }
   
+  // as per documentation this only works if called from within viewWillAppear: or viewDidAppear:
+  // in tests this also worked fine on iOS 6 and 7 but not on iOS 5 so we are still trying this
+  if ([parentViewController isBeingPresented]) {
+    BITHockeyLog(@"WARNING: There is already a view controller being presented onto the parentViewController. Delaying presenting the new view controller by 0.5s.");
+    [self performSelector:@selector(showView:) withObject:viewController afterDelay:0.5];
+    return;
+  }
+  
   // special addition to get rootViewController from three20 which has it's own controller handling
   if (NSClassFromString(@"TTNavigator")) {
 #pragma clang diagnostic push
@@ -259,32 +270,44 @@
 	if (!key || !stringValue)
 		return NO;
   
-  NSString *serviceName = [NSString stringWithFormat:@"%@.HockeySDK", [self mainBundleIdentifier]];
+  NSError *error = nil;
+  return [BITKeychainUtils storeUsername:key
+                             andPassword:stringValue
+                          forServiceName:bit_keychainHockeySDKServiceName()
+                          updateExisting:YES
+                                   error:&error];
+}
+
+- (BOOL)addStringValueToKeychainForThisDeviceOnly:(NSString *)stringValue forKey:(NSString *)key {
+	if (!key || !stringValue)
+		return NO;
   
   NSError *error = nil;
-  return [BITKeychainUtils storeUsername:key andPassword:stringValue forServiceName:serviceName updateExisting:YES error:&error];
+  return [BITKeychainUtils storeUsername:key
+                             andPassword:stringValue
+                          forServiceName:bit_keychainHockeySDKServiceName()
+                          updateExisting:YES
+                           accessibility:kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+                                   error:&error];
 }
 
 - (NSString *)stringValueFromKeychainForKey:(NSString *)key {
 	if (!key)
 		return nil;
   
-  NSString *serviceName = [NSString stringWithFormat:@"%@.HockeySDK", [self mainBundleIdentifier]];
-
   NSError *error = nil;
-  return [BITKeychainUtils getPasswordForUsername:key andServiceName:serviceName error:&error];
+  return [BITKeychainUtils getPasswordForUsername:key
+                                   andServiceName:bit_keychainHockeySDKServiceName()
+                                            error:&error];
 }
 
 - (BOOL)removeKeyFromKeychain:(NSString *)key {
-  NSString *serviceName = [NSString stringWithFormat:@"%@.HockeySDK", [self mainBundleIdentifier]];
-
   NSError *error = nil;
-  return [BITKeychainUtils deleteItemForUsername:key andServiceName:serviceName error:&error];
+  return [BITKeychainUtils deleteItemForUsername:key
+                                  andServiceName:bit_keychainHockeySDKServiceName()
+                                           error:&error];
 }
 
-- (NSString*) mainBundleIdentifier {
-  return [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleIdentifier"];
-}
 
 #pragma mark - Manager Control
 

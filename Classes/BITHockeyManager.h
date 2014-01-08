@@ -75,7 +75,7 @@
 #pragma mark - Public Methods
 
 ///-----------------------------------------------------------------------------
-/// @name Initializion
+/// @name Initialization
 ///-----------------------------------------------------------------------------
 
 /**
@@ -84,6 +84,22 @@
  @return A singleton BITHockeyManager instance ready use
  */
 + (BITHockeyManager *)sharedHockeyManager;
+
+
+/**
+ Initializes the manager with a particular app identifier
+ 
+ Initialize the manager with a HockeyApp app identifier.
+ 
+    [[BITHockeyManager sharedHockeyManager]
+      configureWithIdentifier:@"<AppIdentifierFromHockeyApp>"];
+ 
+ @see configureWithIdentifier:delegate:
+ @see configureWithBetaIdentifier:liveIdentifier:delegate:
+ @see startManager
+ @param appIdentifier The app identifier that should be used.
+ */
+- (void)configureWithIdentifier:(NSString *)appIdentifier;
 
 
 /**
@@ -97,6 +113,7 @@
       configureWithIdentifier:@"<AppIdentifierFromHockeyApp>"
                      delegate:nil];
 
+ @see configureWithIdentifier:
  @see configureWithBetaIdentifier:liveIdentifier:delegate:
  @see startManager
  @see BITHockeyManagerDelegate
@@ -132,6 +149,7 @@
  you to upload any IPA files, uploading only the dSYM package for crash reporting is
  just fine.
 
+ @see configureWithIdentifier:
  @see configureWithIdentifier:delegate:
  @see startManager
  @see BITHockeyManagerDelegate
@@ -161,6 +179,19 @@
 ///-----------------------------------------------------------------------------
 /// @name Modules
 ///-----------------------------------------------------------------------------
+
+
+/**
+ * Set the delegate
+ *
+ * Defines the class that implements the optional protocol `BITHockeyManagerDelegate`.
+ *
+ * @see BITHockeyManagerDelegate
+ * @see BITCrashManagerDelegate
+ * @see BITUpdateManagerDelegate
+ * @see BITFeedbackManagerDelegate
+ */
+@property (nonatomic, weak) id<BITHockeyManagerDelegate> delegate;
 
 
 /**
@@ -307,6 +338,19 @@
 @property (nonatomic, readonly, getter=isAppStoreEnvironment) BOOL appStoreEnvironment;
 
 
+/**
+ Returns the app installation specific anonymous UUID
+ 
+ The value returned by this method is unique and persisted per app installation
+ in the keychain.  It is also being used in crash reports as `CrashReporter Key`
+ and internally when sending crash reports and feedback messages.
+ 
+ This is not identical to the `[ASIdentifierManager advertisingIdentifier]` or
+ the `[UIDevice identifierForVendor]`!
+ */
+@property (nonatomic, readonly) NSString *installString;
+
+
 ///-----------------------------------------------------------------------------
 /// @name Debug Logging
 ///-----------------------------------------------------------------------------
@@ -322,5 +366,38 @@
  */
 @property (nonatomic, assign, getter=isDebugLogEnabled) BOOL debugLogEnabled;
 
+
+///-----------------------------------------------------------------------------
+/// @name Integration test
+///-----------------------------------------------------------------------------
+
+/**
+ Pings the server with the HockeyApp app identifiers used for initialization
+ 
+ Call this method once for debugging purposes to test if your SDK setup code
+ reaches the server successfully.
+ 
+ Once invoked, check the apps page on HockeyApp for a verification.
+ 
+ If you setup the SDK with a beta and live identifier, a call to both app IDs will be done.
+
+ This call is ignored if the app is running in the App Store!.
+ */
+- (void)testIdentifier;
+
+
+///-----------------------------------------------------------------------------
+/// @name Meta
+///-----------------------------------------------------------------------------
+
+/**
+ Returns the SDK Version (CFBundleShortVersionString).
+ */
+- (NSString *)version;
+
+/**
+ Returns the SDK Build (CFBundleVersion) as a string.
+ */
+- (NSString *)build;
 
 @end

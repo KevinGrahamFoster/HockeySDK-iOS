@@ -52,13 +52,20 @@
 #endif
 
 
-@interface BITCrashReportTextFormatter (PrivateAPI)
-NSInteger binaryImageSort(id binary1, id binary2, void *context);
-+ (NSString *)formatStackFrame:(BITPLCrashReportStackFrameInfo *)frameInfo
-                    frameIndex:(NSUInteger)frameIndex
-                        report:(BITPLCrashReport *)report
-                          lp64: (BOOL) lp64;
-@end
+/**
+ * Sort PLCrashReportBinaryImageInfo instances by their starting address.
+ */
+static NSInteger bit_binaryImageSort(id binary1, id binary2, void *context) {
+  uint64_t addr1 = [binary1 imageBaseAddress];
+  uint64_t addr2 = [binary2 imageBaseAddress];
+  
+  if (addr1 < addr2)
+    return NSOrderedAscending;
+  else if (addr1 > addr2)
+    return NSOrderedDescending;
+  else
+    return NSOrderedSame;
+}
 
 
 /**
@@ -116,6 +123,11 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
         case CPU_TYPE_ARM:
           codeType = @"ARM";
           lp64 = false;
+          break;
+          
+        case CPU_TYPE_ARM64:
+          codeType = @"ARM-64";
+          lp64 = true;
           break;
           
         case CPU_TYPE_X86:
@@ -244,7 +256,13 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
     if (report.systemInfo.operatingSystemBuild != nil)
       osBuild = report.systemInfo.operatingSystemBuild;
     
-    [text appendFormat: @"Date/Time:       %@\n", report.systemInfo.timestamp];
+    NSLocale *enUSPOSIXLocale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
+    NSDateFormatter *rfc3339Formatter = [[NSDateFormatter alloc] init];
+    [rfc3339Formatter setLocale:enUSPOSIXLocale];
+    [rfc3339Formatter setDateFormat:@"yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'"];
+    [rfc3339Formatter setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
+    
+    [text appendFormat: @"Date/Time:       %@\n", [rfc3339Formatter stringFromDate:report.systemInfo.timestamp]];
     [text appendFormat: @"OS Version:      %@ %@ (%@)\n", osName, report.systemInfo.operatingSystemVersion, osBuild];
     [text appendFormat: @"Report Version:  104\n"];
   }
@@ -284,7 +302,7 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
      * post-processed report, Apple writes this out as full frame entries. We use the latter format. */
     for (NSUInteger frame_idx = 0; frame_idx < [exception.stackFrames count]; frame_idx++) {
       BITPLCrashReportStackFrameInfo *frameInfo = [exception.stackFrames objectAtIndex: frame_idx];
-      [text appendString: [self formatStackFrame: frameInfo frameIndex: frame_idx report: report lp64: lp64]];
+      [text appendString: [[self class] bit_formatStackFrame: frameInfo frameIndex: frame_idx report: report lp64: lp64]];
     }
     [text appendString: @"\n"];
   }
@@ -301,7 +319,7 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
     }
     for (NSUInteger frame_idx = 0; frame_idx < [thread.stackFrames count]; frame_idx++) {
       BITPLCrashReportStackFrameInfo *frameInfo = [thread.stackFrames objectAtIndex: frame_idx];
-      [text appendString: [self formatStackFrame: frameInfo frameIndex: frame_idx report: report lp64: lp64]];
+      [text appendString: [[self class] bit_formatStackFrame: frameInfo frameIndex: frame_idx report: report lp64: lp64]];
     }
     [text appendString: @"\n"];
     
@@ -326,7 +344,7 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
       /* Remap register names to match Apple's crash reports */
       NSString *regName = reg.registerName;
       if (report.machineInfo != nil && report.machineInfo.processorInfo.typeEncoding == PLCrashReportProcessorTypeEncodingMach) {
-        PLCrashReportProcessorInfo *pinfo = report.machineInfo.processorInfo;
+        BITPLCrashReportProcessorInfo *pinfo = report.machineInfo.processorInfo;
         cpu_type_t arch_type = pinfo.type & ~CPU_ARCH_MASK;
         
         /* Apple uses 'ip' rather than 'r12' on ARM */
@@ -351,7 +369,7 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
   
   /* Images. The iPhone crash report format sorts these in ascending order, by the base address */
   [text appendString: @"Binary Images:\n"];
-  for (BITPLCrashReportBinaryImageInfo *imageInfo in [report.images sortedArrayUsingFunction: binaryImageSort context: nil]) {
+  for (BITPLCrashReportBinaryImageInfo *imageInfo in [report.images sortedArrayUsingFunction: bit_binaryImageSort context: nil]) {
     NSString *uuid;
     /* Fetch the UUID if it exists */
     if (imageInfo.hasImageUUID)
@@ -360,7 +378,7 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
       uuid = @"???";
     
     /* Determine the architecture string */
-    NSString *archName = [self archNameFromImageInfo:imageInfo];
+    NSString *archName = [[self class] bit_archNameFromImageInfo:imageInfo];
     
     /* Determine if this is the main executable or an app specific framework*/
     NSString *binaryDesignator = @" ";
@@ -411,7 +429,7 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
 	NSMutableArray* appUUIDs = [NSMutableArray array];
   
   /* Images. The iPhone crash report format sorts these in ascending order, by the base address */
-  for (BITPLCrashReportBinaryImageInfo *imageInfo in [report.images sortedArrayUsingFunction: binaryImageSort context: nil]) {
+  for (BITPLCrashReportBinaryImageInfo *imageInfo in [report.images sortedArrayUsingFunction: bit_binaryImageSort context: nil]) {
     NSString *uuid;
     /* Fetch the UUID if it exists */
     if (imageInfo.hasImageUUID)
@@ -420,7 +438,7 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
       uuid = @"???";
     
     /* Determine the architecture string */
-    NSString *archName = [self archNameFromImageInfo:imageInfo];
+    NSString *archName = [[self class] bit_archNameFromImageInfo:imageInfo];
     
     /* Determine if this is the app executable or app specific framework */
     NSString *imagePath = [imageInfo.imageName stringByStandardizingPath];
@@ -442,7 +460,7 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
   return appUUIDs;
 }
 
-+ (NSString *)archNameFromImageInfo:(BITPLCrashReportBinaryImageInfo *)imageInfo
++ (NSString *)bit_archNameFromImageInfo:(BITPLCrashReportBinaryImageInfo *)imageInfo
 {
   NSString *archName = @"???";
   if (imageInfo.codeType != nil && imageInfo.codeType.typeEncoding == PLCrashReportProcessorTypeEncodingMach) {
@@ -506,11 +524,6 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
   return archName;
 }
 
-@end
-
-
-@implementation BITCrashReportTextFormatter (PrivateAPI)
-
 
 /**
  * Format a stack frame for display in a thread backtrace.
@@ -522,10 +535,10 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
  *
  * @return Returns a formatted frame line.
  */
-+ (NSString *)formatStackFrame: (BITPLCrashReportStackFrameInfo *) frameInfo
-                    frameIndex: (NSUInteger) frameIndex
-                        report: (BITPLCrashReport *) report
-                          lp64: (BOOL) lp64
++ (NSString *)bit_formatStackFrame: (BITPLCrashReportStackFrameInfo *) frameInfo
+                        frameIndex: (NSUInteger) frameIndex
+                            report: (BITPLCrashReport *) report
+                              lp64: (BOOL) lp64
 {
   /* Base image address containing instrumention pointer, offset of the IP from that base
    * address, and the associated image name */
@@ -601,21 +614,6 @@ NSInteger binaryImageSort(id binary1, id binary2, void *context);
           (const uint16_t *)[imageName cStringUsingEncoding: NSUTF16StringEncoding],
           lp64 ? 16 : 8, frameInfo.instructionPointer,
           symbolString];
-}
-
-/**
- * Sort PLCrashReportBinaryImageInfo instances by their starting address.
- */
-NSInteger binaryImageSort(id binary1, id binary2, void *context) {
-  uint64_t addr1 = [binary1 imageBaseAddress];
-  uint64_t addr2 = [binary2 imageBaseAddress];
-  
-  if (addr1 < addr2)
-    return NSOrderedAscending;
-  else if (addr1 > addr2)
-    return NSOrderedDescending;
-  else
-    return NSOrderedSame;
 }
 
 @end
